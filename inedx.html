@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة طلبات التشليح (متقدم)</title>
+    <!-- تحميل Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+        /* ستايل للزر النشط في فلتر التاريخ */
+        .date-filter-btn.active {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+    <div class="container mx-auto max-w-6xl p-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700">نظام إدارة طلبات التشليح</h1>
+            <p class="text-gray-600 mt-2">إدارة متقدمة للطلبات، الإحصائيات، وتتبع الأرباح.</p>
+            <p class="text-sm text-gray-500 mt-4">معرّف المستخدم: <span id="userIdDisplay" class="font-mono bg-gray-200 p-1 rounded">...</span></p>
+        </header>
+
+        <!-- قسم الإحصائيات المتقدمة -->
+        <div id="statsDashboard" class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-5 text-gray-800">ملخص الإحصائيات</h2>
+            
+            <!-- فلتر التاريخ -->
+            <div class="flex flex-wrap justify-center gap-2 mb-6">
+                <button data-period="all" class="date-filter-btn active bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">كل الوقت</button>
+                <button data-period="today" class="date-filter-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">اليوم</button>
+                <button data-period="week" class="date-filter-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">آخر 7 أيام</button>
+                <button data-period="month" class="date-filter-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">هذا الشهر</button>
+            </div>
+
+            <!-- بطاقات الإحصائيات -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+                <div class="bg-green-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-green-800">صافي الربح</p>
+                    <p id="statNetProfit" class="text-2xl font-bold text-green-700">0.00 ر.س</p>
+                </div>
+                <div class="bg-blue-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-blue-800">إجمالي المبيعات</p>
+                    <p id="statTotalRevenue" class="text-2xl font-bold text-blue-700">0.00 ر.س</p>
+                </div>
+                <div class="bg-red-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-red-800">إجمالي التكاليف</p>
+                    <p id="statTotalCosts" class="text-2xl font-bold text-red-700">0.00 ر.س</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-indigo-800">إجمالي الطلبات</p>
+                    <p id="statTotalOrders" class="text-2xl font-bold text-indigo-700">0</p>
+                </div>
+                <div class="bg-yellow-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-yellow-800">قيد المعالجة</p>
+                    <p id="statPendingOrders" class="text-2xl font-bold text-yellow-700">0</p>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg shadow">
+                    <p class="text-sm font-medium text-gray-800">طلبات مكتملة</p>
+                    <p id="statDeliveredOrders" class="text-2xl font-bold text-gray-700">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم إضافة طلب جديد (منسق) -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-5 text-gray-800">إضافة طلب جديد</h2>
+            <form id="newOrderForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="customerName" placeholder="اسم العميل" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
+                <input type="tel" id="customerPhone" placeholder="رقم جوال العميل" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
+                <!-- <input type="text" id="carModel" placeholder="نوع وموديل السيارة" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" required> --> <!-- تم الدمج -->
+                <input type="text" id="partDesc" placeholder="القطعة والسيارة (مثل: صدام كامري 2018)" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none md:col-span-2" required>
+                <button type="submit" class="md:col-span-2 w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 h-full">
+                    إضافة الطلب
+                </button>
+            </form>
+            <div id="formMessage" class="mt-3 text-center"></div>
+        </div>
+
+        <!-- قسم عرض الطلبات -->
+        <div>
+            <div class="flex flex-col md:flex-row justify-between md:items-center mb-5">
+                <h2 class="text-2xl font-semibold text-gray-800">سجل الطلبات</h2>
+                <input type="search" id="searchInput" placeholder="ابحث (بالاسم، القطعة، الجوال...)" class="mt-3 md:mt-0 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none w-full md:w-1/2 lg:w-1/3">
+            </div>
+            
+            <!-- (جديد) رؤوس العناوين للجدول -->
+            <div class="hidden md:grid grid-cols-5 gap-4 bg-gray-200 p-4 rounded-lg font-semibold text-gray-700 mb-2">
+                <div class="col-span-2">القطعة / السيارة</div>
+                <div>العميل</div>
+                <div>الربح</div>
+                <div class="text-center">الحالة</div>
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-700 mt-6 mb-3">الطلبات الحالية (قيد المعالجة)</h3>
+            <div id="pendingOrderListContainer" class="space-y-2"> <!-- تم تغيير ID -->
+                <!-- سيتم ملء الطلبات هنا عبر جافاسكريبت -->
+                <p id="loadingIndicator" class="text-center text-gray-500">جاري تحميل الطلبات...</p>
+            </div>
+            
+            <h3 class="text-xl font-semibold text-gray-700 mt-10 mb-3">الطلبات المكتملة / الملغية</h3>
+            <div id="completedOrderListContainer" class="space-y-2"> <!-- حاوية جديدة -->
+                <!-- سيتم ملء الطلبات المكتملة هنا -->
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال (نافذة منبثقة) لتحديث الطلب (كما هو) -->
+    <div id="updateModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden transition-opacity duration-300 z-40" style="backdrop-filter: blur(5px);">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">تحديث تفاصيل الطلب</h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <form id="updateOrderForm" class="space-y-4">
+                <input type="hidden" id="modalOrderId">
+                
+                <div>
+                    <label for="scrapYardName" class="block text-sm font-medium text-gray-700 mb-1">اسم التشليح / المورّد</label>
+                    <input type="text" id="scrapYardName" placeholder="اسم التشليح" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="purchasePrice" class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء (من التشليح)</label>
+                        <input type="number" id="purchasePrice" placeholder="0.00" min="0" step="0.01" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="sellingPrice" class="block text-sm font-medium text-gray-700 mb-1">سعر البيع (للعميل)</label>
+                        <input type="number" id="sellingPrice" placeholder="0.00" min="0" step="0.01" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="deliveryFee" class="block text-sm font-medium text-gray-700 mb-1">رسوم التوصيل</label>
+                    <input type="number" id="deliveryFee" placeholder="0.00" min="0" step="0.01" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                </div>
+                
+                <div>
+                    <label for="orderStatus" class="block text-sm font-medium text-gray-700 mb-1">حالة الطلب</label>
+                    <select id="orderStatus" class="w-full p-2 border rounded-lg bg-white focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                        <option value="new">جديد (قيد البحث)</option>
+                        <option value="found">تم العثور عليها</option>
+                        <option value="delivered">تم التسليم</option>
+                        <option value="cancelled">ملغي</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end pt-4">
+                    <button type="button" id="cancelUpdateBtn" class="ml-3 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">إلغاء</button>
+                    <button type="submit" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600">حفظ التحديث</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- رسائل التنبيه (كما هي) -->
+    <div id="customAlert" class="hidden fixed top-5 right-5 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50">
+        <span id="customAlertMessage"></span>
+    </div>
+    <div id="customSuccess" class="hidden fixed top-5 right-5 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50">
+        <span id="customSuccessMessage"></span>
+    </div>
+
+
+    <!-- تحميل Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            addDoc, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            Timestamp,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- إعدادات التطبيق ---
+        
+        // (الدوال المساعدة للإشعارات كما هي)
+        function showAlert(message) {
+            // ... (الكود كما هو)
+            const alertBox = document.getElementById('customAlert');
+            document.getElementById('customAlertMessage').textContent = message;
+            alertBox.classList.remove('hidden');
+            setTimeout(() => {
+                alertBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showSuccess(message) {
+            // ... (الكود كما هو)
+            const successBox = document.getElementById('customSuccess');
+            document.getElementById('customSuccessMessage').textContent = message;
+            successBox.classList.remove('hidden');
+            setTimeout(() => {
+                successBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        // إعداد Firebase
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        let app, auth, db, userId, ordersCollectionRef;
+        const ordersCollectionPathBase = `/artifacts/${appId}/users`;
+        
+        // --- متغيرات الحالة للإحصائيات والفلترة ---
+        let allOrders = []; // مصفوفة لتخزين جميع الطلبات للفلترة
+        let currentPeriod = 'all'; // الفلتر الزمني الحالي
+
+        try {
+            app = initializeApp(firebaseConfig);
+            // --- FIX: Added missing auth and db initializations ---
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setLogLevel('Debug');
+            console.log("Firebase initialized successfully.");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            showAlert("خطأ في تهيئة قاعدة البيانات.");
+        }
+
+        // --- عناصر الواجهة ---
+        const newOrderForm = document.getElementById('newOrderForm');
+        // const orderListContainer = document.getElementById('orderListContainer'); // تم الإلغاء
+        const pendingOrderListContainer = document.getElementById('pendingOrderListContainer'); // جديد
+        const completedOrderListContainer = document.getElementById('completedOrderListContainer'); // جديد
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const searchInput = document.getElementById('searchInput');
+        const statsDashboard = document.getElementById('statsDashboard');
+
+        // عناصر المودال
+        const updateModal = document.getElementById('updateModal');
+        const updateOrderForm = document.getElementById('updateOrderForm');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
+
+        // --- المصادقة ---
+        onAuthStateChanged(auth, async (user) => {
+            try {
+                if (user) {
+                    userId = user.uid;
+                    console.log("User authenticated:", userId);
+                    userIdDisplay.textContent = userId;
+                    const collectionPath = `${ordersCollectionPathBase}/${userId}/tashlih_orders`;
+                    ordersCollectionRef = collection(db, collectionPath);
+                    // --- FIX: Added missing loadOrders() call ---
+                    loadOrders();
+                } else {
+                    // --- FIX: Added missing else block for authentication ---
+                    console.log("No user signed in. Signing in...");
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        // كخيار احتياطي، تسجيل الدخول المجهول
+                        await signInAnonymously(auth);
+                    }
+                }
+            } catch (error) {
+                console.error("Authentication error:", error);
+                showAlert("خطأ في المصادقة: " + error.message);
+                loadingIndicator.textContent = "خطأ في المصادقة. يرجى تحديث الصفحة.";
+            }
+        });
+
+        // --- تحميل البيانات وعرضها (محدّث) ---
+
+        function loadOrders() {
+            if (!ordersCollectionRef) return;
+            
+            loadingIndicator.textContent = "جاري تحميل الطلبات...";
+
+            onSnapshot(ordersCollectionRef, (snapshot) => {
+                loadingIndicator.classList.add('hidden');
+                
+                // تخزين جميع الطلبات في الذاكرة للفلترة
+                allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // تحديث الواجهة بالكامل (الإحصائيات + القائمة)
+                updateUI();
+
+            }, (error) => {
+                console.error("Error loading orders:", error);
+                showAlert("حدث خطأ أثناء تحميل الطلبات.");
+                loadingIndicator.textContent = "خطأ في تحميل البيانات.";
+            });
+        }
+        
+        // --- دالة رئيسية لتحديث الواجهة (جديدة) ---
+        function updateUI() {
+            // 1. فلترة الطلبات حسب التاريخ المحدد
+            const filteredByDate = filterOrdersByDate(allOrders, currentPeriod);
+            
+            // 2. تحديث لوحة الإحصائيات بناءً على الطلبات المفلترة بالتاريخ
+            updateDashboard(filteredByDate);
+
+            // 3. فلترة القائمة حسب البحث
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredBySearch = filterOrdersBySearch(filteredByDate, searchTerm);
+
+            // 4. عرض الطلبات المفلترة
+            renderOrderList(filteredBySearch);
+        }
+
+        // --- دوال الفلترة (جديدة) ---
+
+        function filterOrdersByDate(orders, period) {
+            const now = new Date();
+            let startDate = new Date(0); // بداية الزمن (لكل الوقت)
+
+            switch (period) {
+                case 'today':
+                    startDate = new Date(now.setHours(0, 0, 0, 0));
+                    break;
+                case 'week':
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - 7);
+                    startDate = new Date(weekStart.setHours(0, 0, 0, 0));
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                case 'all':
+                default:
+                    return orders; // أرجع كل الطلبات
+            }
+
+            return orders.filter(order => {
+                return order.createdAt && order.createdAt.toDate() >= startDate;
+            });
+        }
+
+        // --- FIX: Corrected filterOrdersBySearch ---
+        function filterOrdersBySearch(orders, searchTerm) {
+            if (!searchTerm) {
+                return orders; // لا يوجد بحث، أرجع كل الطلبات
+            }
+
+            return orders.filter(order => {
+                // (جديد) يعالج الطلبات القديمة (المفصولة) والجديدة (المدمجة)
+                const displayPartDesc = order.partDesc + (order.carModel ? ` - ${order.carModel}` : '');
+
+                return (
+                    displayPartDesc.toLowerCase().includes(searchTerm) ||
+                    order.customerName.toLowerCase().includes(searchTerm) ||
+                    order.customerPhone.includes(searchTerm) ||
+                    (order.scrapYardName && order.scrapYardName.toLowerCase().includes(searchTerm))
+                );
+            });
+        }
+
+        // --- تحديث الإحصائيات (جديد) ---
+
+        function updateDashboard(filteredOrders) {
+            const stats = filteredOrders.reduce((acc, order) => {
+                const purchase = parseFloat(order.purchasePrice) || 0;
+                const selling = parseFloat(order.sellingPrice) || 0;
+                const profit = selling - purchase;
+
+                acc.totalRevenue += selling;
+                acc.totalCosts += purchase;
+                acc.netProfit += profit;
+                acc.totalOrders += 1;
+
+                if (order.status === 'delivered') {
+                    acc.deliveredOrders += 1;
+                } else if (order.status === 'new' || order.status === 'found') {
+                    acc.pendingOrders += 1;
+                }
+                
+                return acc;
+            }, {
+                netProfit: 0,
+                totalRevenue: 0,
+                totalCosts: 0,
+                totalOrders: 0,
+                pendingOrders: 0,
+                deliveredOrders: 0
+            });
+
+            document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit);
+            document.getElementById('statTotalRevenue').textContent = formatCurrency(stats.totalRevenue);
+            document.getElementById('statTotalCosts').textContent = formatCurrency(stats.totalCosts);
+            document.getElementById('statTotalOrders').textContent = stats.totalOrders;
+            document.getElementById('statPendingOrders').textContent = stats.pendingOrders;
+            document.getElementById('statDeliveredOrders').textContent = stats.deliveredOrders;
+        }
+
+        // --- عرض قائمة الطلبات (معدّل) ---
+
+        function renderOrderList(orders) {
+            // orderListContainer.innerHTML = ''; // تفريغ القائمة
+            pendingOrderListContainer.innerHTML = ''; // جديد
+            completedOrderListContainer.innerHTML = ''; // جديد
+
+            if (orders.length === 0) {
+                loadingIndicator.classList.add('hidden'); // إخفاء مؤشر التحميل الرئيسي
+                pendingOrderListContainer.innerHTML = '<p class="text-center text-gray-500 py-4">لا توجد طلبات تطابق معايير البحث أو الفلترة الحالية.</p>';
+                return;
+            }
+
+            // الفرز حسب تاريخ الإنشاء (الأحدث أولاً)
+            const sortedOrders = orders.sort((a, b) => {
+                const timeA = a.createdAt?.toMillis() || 0;
+                const timeB = b.createdAt?.toMillis() || 0;
+                return timeB - timeA;
+            });
+            
+            let pendingCount = 0;
+            sortedOrders.forEach(order => {
+                const orderCard = createOrderCard(order);
+                // (جديد) فصل الطلبات
+                if (order.status === 'delivered' || order.status === 'cancelled') {
+                    completedOrderListContainer.appendChild(orderCard);
+                } else {
+                    pendingOrderListContainer.appendChild(orderCard);
+                    pendingCount++;
+                }
+            });
+
+            // (جديد) إظهار رسالة إذا لم تكن هناك طلبات قيد المعالجة
+            if (pendingCount === 0 && orders.length > 0) {
+                 pendingOrderListContainer.innerHTML = '<p class="text-center text-gray-500 py-4">لا توجد طلبات قيد المعالجة تطابق البحث.</p>';
+            }
+        }
+
+
+        // إنشاء بطاقة طلب (تمت إعادة كتابته بالكامل لنمط الأكورديون)
+        function createOrderCard(order) {
+            const container = document.createElement('div');
+            container.className = "bg-white rounded-xl shadow-lg transition-all duration-300 overflow-hidden";
+            container.dataset.orderId = order.id;
+
+            const purchase = parseFloat(order.purchasePrice) || 0;
+            const selling = parseFloat(order.sellingPrice) || 0;
+            const profit = selling - purchase;
+            const profitColor = profit > 0 ? 'text-green-600' : (profit < 0 ? 'text-red-600' : 'text-gray-600');
+            const statusStyle = getStatusStyle(order.status);
+            const formattedDate = order.createdAt ? new Date(order.createdAt.toMillis()).toLocaleString('ar-SA') : 'غير معروف';
+            
+            // (جديد) يعالج الطلبات القديمة (المفصولة) والجديدة (المدمجة)
+            const displayPartDesc = order.partDesc + (order.carModel ? ` - ${order.carModel}` : '');
+            
+            // (جديد) إضافة آخر 4 أرقام من الجوال
+            const phoneSuffix = order.customerPhone ? ` (...${order.customerPhone.slice(-4)})` : '';
+
+
+            container.innerHTML = `
+                <!-- السطر الملخص (العنوان) -->
+                <div class="order-summary grid grid-cols-2 md:grid-cols-5 gap-4 items-center p-4 cursor-pointer hover:bg-gray-50">
+                    
+                    <!-- عرض الجوال (عمودين) -->
+                    <div class="md:hidden col-span-1">
+                         <h3 class="text-lg font-bold text-blue-800">${displayPartDesc}</h3>
+                         <p class="text-sm text-gray-600">${order.customerName}${phoneSuffix}</p>
+                    </div>
+                    <div class="md:hidden flex flex-col items-end justify-between text-right">
+                         <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusStyle.bg} ${statusStyle.text} mb-2">
+                            ${statusStyle.label}
+                        </span>
+                        <span class="text-blue-500 transform transition-transform duration-200">▼</span>
+                    </div>
+                    
+                    <!-- عرض سطح المكتب (5 أعمدة) -->
+                    <div class="hidden md:block col-span-2">
+                        <h3 class="text-lg font-bold text-blue-800">${displayPartDesc}</h3>
+                    </div>
+                    <div class="hidden md:block">
+                        <p class="text-gray-700">${order.customerName}${phoneSuffix}</p>
+                    </div>
+                    <div class="hidden md:block">
+                        <p class="text-lg font-bold ${profitColor}">${formatCurrency(profit)}</p>
+                    </div>
+                    <div class="hidden md:flex justify-center items-center">
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold ${statusStyle.bg} ${statusStyle.text}">
+                            ${statusStyle.label}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- التفاصيل المخفية -->
+                <div class="order-details hidden p-6 border-t border-gray-200 bg-gray-50">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-5">
+                        <!-- معلومات العميل (مفصل) -->
+                        <div class="space-y-2">
+                            <p class="font-semibold text-gray-700">معلومات العميل:</p>
+                            <p><span class="font-medium">الاسم:</span> ${order.customerName}</p>
+                            <p><span class="font-medium">الجوال:</span> ${order.customerPhone}</p>
+                            <p class="text-xs text-gray-400">تاريخ الإضافة: ${formattedDate}</p>
+                        </div>
+                        
+                        <!-- معلومات التسعير (مفصل) -->
+                        <div class="space-y-2">
+                            <p class="font-semibold text-gray-700">المعلومات المالية:</p>
+                            <p><span class="font-medium">التشليح:</span> ${order.scrapYardName || '---'}</p>
+                            <p><span class="font-medium">سعر الشراء:</span> ${formatCurrency(purchase)}</p>
+                            <p><span class="font-medium">سعر البيع:</span> ${formatCurrency(selling)}</p>
+                            <p><span class="font-medium">التوصيل:</span> ${formatCurrency(order.deliveryFee)}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-2 space-x-reverse border-t pt-4">
+                        <!-- (جديد) زر تم الإنجاز -->
+                        ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                        <button data-action="complete" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">
+                            تم الإنجاز
+                        </button>
+                        ` : ''}
+
+                        <button data-action="update" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-yellow-600 transition-colors">
+                            تعديل / تحديث
+                        </button>
+                        <button data-action="delete" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
+                            حذف
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // ربط الأحداث (جديد)
+            const summary = container.querySelector('.order-summary');
+            const details = container.querySelector('.order-details');
+            const arrow = summary.querySelector('span[class*="transform"]'); // سهم الجوال
+
+            summary.addEventListener('click', (e) => {
+                // منع الفتح/الإغلاق عند الضغط على زر داخل التفاصيل (احتياطي)
+                if (e.target.dataset.action) return;
+                
+                details.classList.toggle('hidden');
+                if (arrow) {
+                    arrow.classList.toggle('rotate-180'); // تدوير السهم
+                }
+            });
+
+            // ربط أحداث الأزرار (داخل التفاصيل)
+            container.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                if (action === 'update') {
+                    openUpdateModal(order);
+                } else if (action === 'delete') {
+                    deleteOrder(order.id, displayPartDesc); // إرسال الوصف المدمج
+                } else if (action === 'complete') { // (جديد)
+                    completeOrder(order.id);
+                }
+            });
+
+            return container;
+        }
+
+        // --- دوال المودال (كما هي) ---
+
+        function openUpdateModal(order) {
+            document.getElementById('modalOrderId').value = order.id;
+            document.getElementById('scrapYardName').value = order.scrapYardName || '';
+            document.getElementById('purchasePrice').value = order.purchasePrice || '';
+            document.getElementById('sellingPrice').value = order.sellingPrice || '';
+            document.getElementById('deliveryFee').value = order.deliveryFee || '';
+            document.getElementById('orderStatus').value = order.status || 'new';
+            updateModal.classList.remove('hidden');
+        }
+
+        function closeUpdateModal() {
+            updateModal.classList.add('hidden');
+            updateOrderForm.reset();
+            document.getElementById('modalOrderId').value = '';
+        }
+
+        closeModalBtn.addEventListener('click', closeUpdateModal);
+        cancelUpdateBtn.addEventListener('click', closeUpdateModal);
+
+        // --- دوال معالجة البيانات (CRUD) (كما هي) ---
+
+        // إضافة طلب جديد
+        newOrderForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!ordersCollectionRef) {
+                showAlert("قاعدة البيانات غير جاهزة. يرجى المحاولة مرة أخرى.");
+                return;
+            }
+
+            const newOrder = {
+                customerName: document.getElementById('customerName').value,
+                customerPhone: document.getElementById('customerPhone').value,
+                partDesc: document.getElementById('partDesc').value,
+                // carModel: document.getElementById('carModel').value, // تم الإلغاء
+                status: 'new',
+                createdAt: Timestamp.now(),
+                scrapYardName: '',
+                purchasePrice: 0,
+                sellingPrice: 0,
+                deliveryFee: 0,
+            };
+
+            try {
+                await addDoc(ordersCollectionRef, newOrder);
+                showSuccess("تمت إضافة الطلب بنجاح!");
+                newOrderForm.reset();
+                // الواجهة ستتحدث تلقائياً بفضل onSnapshot
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showAlert("خطأ أثناء إضافة الطلب: " + error.message);
+            }
+        });
+
+        // (جديد) دالة لتمييز الطلب كمكتمل
+        async function completeOrder(orderId) {
+            if (!orderId || !ordersCollectionRef) {
+                showAlert("خطأ: لم يتم العثور على معرّف الطلب.");
+                return;
+            }
+            
+            try {
+                const docRef = doc(db, ordersCollectionRef.path, orderId);
+                await updateDoc(docRef, { status: 'delivered' });
+                showSuccess("تم إنجاز الطلب ونقله للمكتملة.");
+                // onSnapshot سيتولى إعادة الترتيب
+            } catch (error) {
+                console.error("Error completing order:", error);
+                showAlert("خطأ أثناء تحديث حالة الطلب: " + error.message);
+            }
+        }
+
+
+        // --- ربط الأحداث للفلاتر (جديد) ---
+        
+        // حدث البحث
+        searchInput.addEventListener('input', () => {
+            updateUI(); // أعد عرض القائمة والإحصائيات بناءً على البحث والفلتر
+        });
+
+        // حدث فلتر التاريخ
+        statsDashboard.addEventListener('click', (e) => {
+            if (e.target.classList.contains('date-filter-btn')) {
+                // إزالة 'active' من كل الأزرار
+                statsDashboard.querySelectorAll('.date-filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // إضافة 'active' للزر المضغوط
+                e.target.classList.add('active');
+                
+                // تحديث الفترة الزمنية
+                currentPeriod = e.target.dataset.period;
+                
+                // تحديث الواجهة
+                updateUI();
+            }
+        });
+
+
+        // --- دوال مساعدة (كما هي) ---
+
+        function formatCurrency(value) {
+            const val = parseFloat(value);
+            if (isNaN(val)) return '0.00 ر.س'; // التعامل مع NaN
+            return val.toFixed(2) + ' ر.س';
+        }
+
+        function getStatusStyle(status) {
+            switch (status) {
+                case 'new':
+                    return { label: 'جديد', bg: 'bg-blue-100', text: 'text-blue-800' };
+                case 'found':
+                    return { label: 'تم العثور عليها', bg: 'bg-yellow-100', text: 'text-yellow-800' };
+                case 'delivered':
+                    return { label: 'تم التسليم', bg: 'bg-green-100', text: 'text-green-800' };
+                case 'cancelled':
+                    return { label: 'ملغي', bg: 'bg-red-100', text: 'text-red-800' };
+                default:
+                    return { label: 'غير معروف', bg: 'bg-gray-100', text: 'text-gray-800' };
+            }
+        }
+
+    </script>
+</body>
+</html>

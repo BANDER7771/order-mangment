@@ -237,28 +237,42 @@
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
+        let app, auth, db, analytics, userId, ordersCollectionRef;
+        
+        try {
+            app = initializeApp(firebaseConfig);
+            console.log("Firebase app initialized successfully.");
+            
+            // تهيئة Auth أولاً (الأهم)
+            auth = getAuth(app);
+            console.log("Firebase Auth initialized successfully.");
+            
+            // تهيئة Firestore
+            db = getFirestore(app);
+            console.log("Firestore initialized successfully.");
+            
+            // تهيئة Analytics (اختياري - قد يفشل إذا لم يكن مفعلاً)
+            try {
+                analytics = getAnalytics(app);
+                console.log("Firebase Analytics initialized successfully.");
+            } catch (analyticsError) {
+                console.warn("Analytics not available:", analyticsError);
+                // لا نوقف التطبيق إذا فشل Analytics
+            }
+            
+            setLogLevel('Debug');
+            console.log("Firebase initialized successfully.");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            showAlert("خطأ في تهيئة قاعدة البيانات: " + error.message);
+        }
 
         const appId = firebaseConfig.projectId; // استخدام projectId من الإعدادات
-        
-        let auth, db, userId, ordersCollectionRef;
         const ordersCollectionPathBase = `/artifacts/${appId}/users`;
         
         // --- متغيرات الحالة للإحصائيات والفلترة ---
         let allOrders = []; // مصفوفة لتخزين جميع الطلبات للفلترة
         let currentPeriod = 'all'; // الفلتر الزمني الحالي
-
-        try {
-            // --- FIX: Added missing auth and db initializations ---
-            auth = getAuth(app);
-            db = getFirestore(app);
-            setLogLevel('Debug');
-            console.log("Firebase initialized successfully.");
-        } catch (error) {
-            console.error("Firebase initialization error:", error);
-            showAlert("خطأ في تهيئة قاعدة البيانات.");
-        }
 
         // --- عناصر الواجهة ---
         const newOrderForm = document.getElementById('newOrderForm');
@@ -277,32 +291,38 @@
         const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
 
         // --- المصادقة ---
-        onAuthStateChanged(auth, async (user) => {
-            try {
-                if (user) {
-                    userId = user.uid;
-                    console.log("User authenticated:", userId);
-                    userIdDisplay.textContent = userId;
-                    const collectionPath = `${ordersCollectionPathBase}/${userId}/tashlih_orders`;
-                    ordersCollectionRef = collection(db, collectionPath);
-                    // --- FIX: Added missing loadOrders() call ---
-                    loadOrders();
-                } else {
-                    // --- FIX: Added missing else block for authentication ---
-                    console.log("No user signed in. Signing in...");
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                try {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User authenticated:", userId);
+                        userIdDisplay.textContent = userId;
+                        const collectionPath = `${ordersCollectionPathBase}/${userId}/tashlih_orders`;
+                        ordersCollectionRef = collection(db, collectionPath);
+                        // --- FIX: Added missing loadOrders() call ---
+                        loadOrders();
                     } else {
-                        // كخيار احتياطي، تسجيل الدخول المجهول
-                        await signInAnonymously(auth);
+                        // --- FIX: Added missing else block for authentication ---
+                        console.log("No user signed in. Signing in...");
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            // كخيار احتياطي، تسجيل الدخول المجهول
+                            await signInAnonymously(auth);
+                        }
                     }
+                } catch (error) {
+                    console.error("Authentication error:", error);
+                    showAlert("خطأ في المصادقة: " + error.message);
+                    loadingIndicator.textContent = "خطأ في المصادقة. يرجى تحديث الصفحة.";
                 }
-            } catch (error) {
-                console.error("Authentication error:", error);
-                showAlert("خطأ في المصادقة: " + error.message);
-                loadingIndicator.textContent = "خطأ في المصادقة. يرجى تحديث الصفحة.";
-            }
-        });
+            });
+        } else {
+            console.error("Auth not initialized! Cannot proceed with authentication.");
+            showAlert("خطأ في تهيئة المصادقة. يرجى تحديث الصفحة.");
+            loadingIndicator.textContent = "خطأ في تهيئة المصادقة.";
+        }
 
         // --- تحميل البيانات وعرضها (محدّث) ---
 

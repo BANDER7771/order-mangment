@@ -226,14 +226,6 @@
 
         // إعداد Firebase
         // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "firebase/app";
-        import { getAnalytics } from "firebase/analytics";
-        // TODO: Add SDKs for Firebase products that you want to use
-        // https://firebase.google.com/docs/web/setup#available-libraries
-
-        // Your web app's Firebase configuration
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
             apiKey: "AIzaSyBfzpeLnkzoTmGoSUak1IGr1VCGVveaWZQ",
             authDomain: "order-mangment-9eec5.firebaseapp.com",
@@ -244,7 +236,7 @@
             measurementId: "G-R79542MKC7"
         };
 
-        // Initialize Firebase (once only)
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
 

@@ -224,8 +224,16 @@
         }
 
         // إعداد Firebase
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfzpeLnkz0ImGoSUak1G7lVCGVveaWZQ",
+            authDomain: "order-mangment-9eec5.firebaseapp.com",
+            projectId: "order-mangment-9eec5",
+            storageBucket: "order-mangment-9eec5.appspot.com",
+            messagingSenderId: "1073408534944",
+            appId: "1:1073408534944:web:6d3b5c5250185ea7abdcc5",
+        };
+
+        const appId = firebaseConfig.projectId; // استخدام projectId من الإعدادات
         
         let app, auth, db, userId, ordersCollectionRef;
         const ordersCollectionPathBase = `/artifacts/${appId}/users`;
